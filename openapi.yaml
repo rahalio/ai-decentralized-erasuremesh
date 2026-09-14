@@ -1,0 +1,625 @@
+openapi: 3.0.3
+info:
+  title: Erasuremesh
+  version: 0.1.0
+  description: >-
+    Erasure orchestration across controller–processor–sub-processor graphs,
+    including ML-derived persona purge and regulator-ready evidence packs.
+  x-product-slug: ai-decentralized-erasuremesh
+  x-source: ai-in-decentralized+ai/Accenture-GDPR-PoV/
+servers:
+  - url: https://api.example.com
+tags:
+  - name: ProcessorGraph
+  - name: ErasureOrders
+  - name: DerivedArtefacts
+  - name: RecipientNotices
+  - name: EvidencePacks
+paths:
+  /v1/processor-nodes:
+    get:
+      operationId: listProcessorNodes
+      tags: [ProcessorGraph]
+      security: [{ BearerAuth: [] }]
+      parameters:
+        - $ref: "#/components/parameters/Cursor"
+        - $ref: "#/components/parameters/Limit"
+      responses:
+        "200":
+          description: Processor nodes page
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ListEnvelopeProcessorNode"
+    post:
+      operationId: registerProcessorNode
+      tags: [ProcessorGraph]
+      security: [{ BearerAuth: [] }]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ProcessorNodeCreate"
+      responses:
+        "201":
+          description: Node registered
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/DataEnvelopeProcessorNode"
+  /v1/processor-graph/edges:
+    post:
+      operationId: linkProcessorEdge
+      tags: [ProcessorGraph]
+      security: [{ BearerAuth: [] }]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/GraphEdgeCreate"
+      responses:
+        "201":
+          description: Edge created
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/DataEnvelopeGraphEdge"
+  /v1/erasure-orders:
+    get:
+      operationId: listErasureOrders
+      tags: [ErasureOrders]
+      security: [{ BearerAuth: [] }]
+      parameters:
+        - $ref: "#/components/parameters/Cursor"
+        - $ref: "#/components/parameters/Limit"
+        - name: status
+          in: query
+          schema:
+            type: string
+            enum: [open, in_progress, blocked, completed, force_closed]
+      responses:
+        "200":
+          description: Orders page
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ListEnvelopeErasureOrder"
+    post:
+      operationId: createErasureOrder
+      tags: [ErasureOrders]
+      security: [{ BearerAuth: [] }, { ApiKeyAuth: [] }]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ErasureOrderCreate"
+      responses:
+        "201":
+          description: Order created
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/DataEnvelopeErasureOrder"
+  /v1/erasure-orders/{orderId}:
+    parameters:
+      - name: orderId
+        in: path
+        required: true
+        schema: { type: string }
+    get:
+      operationId: getErasureOrder
+      tags: [ErasureOrders]
+      security: [{ BearerAuth: [] }]
+      responses:
+        "200":
+          description: Order
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/DataEnvelopeErasureOrder"
+        "404":
+          $ref: "#/components/responses/NotFound"
+  /v1/erasure-orders/{orderId}/tasks/{taskId}/acknowledgement:
+    parameters:
+      - name: orderId
+        in: path
+        required: true
+        schema: { type: string }
+      - name: taskId
+        in: path
+        required: true
+        schema: { type: string }
+    post:
+      operationId: acknowledgeErasureTask
+      tags: [ErasureOrders]
+      security: [{ ApiKeyAuth: [] }]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/TaskAcknowledgement"
+      responses:
+        "200":
+          description: Acknowledgement recorded
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/DataEnvelopeErasureTask"
+  /v1/derived-artefacts:
+    get:
+      operationId: listDerivedArtefacts
+      tags: [DerivedArtefacts]
+      security: [{ BearerAuth: [] }]
+      parameters:
+        - $ref: "#/components/parameters/Cursor"
+        - $ref: "#/components/parameters/Limit"
+        - name: orderId
+          in: query
+          schema: { type: string }
+      responses:
+        "200":
+          description: Derived artefacts page
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ListEnvelopeDerivedArtefact"
+  /v1/derived-artefacts/{artefactId}/purge:
+    parameters:
+      - name: artefactId
+        in: path
+        required: true
+        schema: { type: string }
+    post:
+      operationId: purgeDerivedArtefact
+      tags: [DerivedArtefacts]
+      security: [{ BearerAuth: [] }, { ApiKeyAuth: [] }]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [purgeProofHash]
+              properties:
+                purgeProofHash: { type: string }
+                method:
+                  type: string
+                  enum: [delete, retrain_exclude, suppress]
+      responses:
+        "202":
+          description: Purge accepted
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/DataEnvelopeDerivedArtefact"
+  /v1/recipient-notices:
+    get:
+      operationId: listRecipientNotices
+      tags: [RecipientNotices]
+      security: [{ BearerAuth: [] }]
+      parameters:
+        - $ref: "#/components/parameters/Cursor"
+        - $ref: "#/components/parameters/Limit"
+      responses:
+        "200":
+          description: Notices page
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ListEnvelopeRecipientNotice"
+    post:
+      operationId: createRecipientNotice
+      tags: [RecipientNotices]
+      security: [{ BearerAuth: [] }]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/RecipientNoticeCreate"
+      responses:
+        "201":
+          description: Notice created
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/DataEnvelopeRecipientNotice"
+  /v1/evidence-packs:
+    get:
+      operationId: listEvidencePacks
+      tags: [EvidencePacks]
+      security: [{ BearerAuth: [] }]
+      parameters:
+        - $ref: "#/components/parameters/Cursor"
+        - $ref: "#/components/parameters/Limit"
+      responses:
+        "200":
+          description: Evidence packs page
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ListEnvelopeEvidencePack"
+  /v1/erasure-orders/{orderId}/evidence-pack:
+    parameters:
+      - name: orderId
+        in: path
+        required: true
+        schema: { type: string }
+    post:
+      operationId: assembleEvidencePack
+      tags: [EvidencePacks]
+      security: [{ BearerAuth: [] }]
+      responses:
+        "201":
+          description: Pack assembled
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/DataEnvelopeEvidencePack"
+        "409":
+          description: Incomplete tasks or derived artefacts
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Problem"
+
+components:
+  securitySchemes:
+    ApiKeyAuth:
+      type: apiKey
+      in: header
+      name: X-API-Key
+    BearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+  parameters:
+    Cursor:
+      name: cursor
+      in: query
+      schema: { type: string }
+    Limit:
+      name: limit
+      in: query
+      schema: { type: integer, minimum: 1, maximum: 200, default: 50 }
+  responses:
+    Unauthorized:
+      description: Missing or invalid credentials
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/Problem"
+    NotFound:
+      description: Resource not found
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/Problem"
+    UnprocessableEntity:
+      description: Validation failed
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/Problem"
+  schemas:
+    ResponseMeta:
+      type: object
+      required: [requestId, timestamp]
+      properties:
+        requestId: { type: string }
+        timestamp: { type: string, format: date-time }
+    Problem:
+      type: object
+      required: [type, title, status]
+      properties:
+        type: { type: string, format: uri }
+        title: { type: string }
+        status: { type: integer }
+        detail: { type: string }
+
+    ProcessorNode:
+      type: object
+      required: [id, name, role, status]
+      properties:
+        id: { type: string }
+        name: { type: string }
+        role:
+          type: string
+          enum: [controller, processor, sub_processor]
+        status:
+          type: string
+          enum: [active, suspended]
+        acknowledgementEndpoint: { type: string }
+    ProcessorNodeCreate:
+      type: object
+      required: [name, role]
+      properties:
+        name: { type: string }
+        role:
+          type: string
+          enum: [controller, processor, sub_processor]
+        acknowledgementEndpoint: { type: string }
+    GraphEdge:
+      type: object
+      required: [id, fromNodeId, toNodeId]
+      properties:
+        id: { type: string }
+        fromNodeId: { type: string }
+        toNodeId: { type: string }
+        contractualBasis: { type: string }
+    GraphEdgeCreate:
+      type: object
+      required: [fromNodeId, toNodeId]
+      properties:
+        fromNodeId: { type: string }
+        toNodeId: { type: string }
+        contractualBasis: { type: string }
+    ErasureOrder:
+      type: object
+      required: [id, subjectRef, status, dueAt]
+      properties:
+        id: { type: string }
+        subjectRef: { type: string }
+        tenantId: { type: string }
+        status:
+          type: string
+          enum: [open, in_progress, blocked, completed, force_closed]
+        channel:
+          type: string
+          enum: [written, verbal, portal, api]
+        dueAt: { type: string, format: date-time }
+        derivedArtefactsPending: { type: integer }
+    ErasureOrderCreate:
+      type: object
+      required: [subjectRef, channel]
+      properties:
+        subjectRef: { type: string }
+        tenantId: { type: string }
+        channel:
+          type: string
+          enum: [written, verbal, portal, api]
+        legalGround:
+          type: string
+          enum: [consent_withdrawn, no_longer_necessary, marketing_objection, unlawful, legal_obligation, child_iss]
+    ErasureTask:
+      type: object
+      required: [id, orderId, processorNodeId, status]
+      properties:
+        id: { type: string }
+        orderId: { type: string }
+        processorNodeId: { type: string }
+        status:
+          type: string
+          enum: [pending, acknowledged, failed, waived]
+        proofHash: { type: string }
+    TaskAcknowledgement:
+      type: object
+      required: [status]
+      properties:
+        status:
+          type: string
+          enum: [acknowledged, failed]
+        proofHash: { type: string }
+        detail: { type: string }
+    DerivedArtefact:
+      type: object
+      required: [id, orderId, artefactType, status]
+      properties:
+        id: { type: string }
+        orderId: { type: string }
+        artefactType:
+          type: string
+          enum: [persona, embedding, segment_membership, model_weight_contribution]
+        status:
+          type: string
+          enum: [identified, purge_pending, purged, exempt]
+        purgeProofHash: { type: string }
+    RecipientNotice:
+      type: object
+      required: [id, orderId, recipientNodeId, status]
+      properties:
+        id: { type: string }
+        orderId: { type: string }
+        recipientNodeId: { type: string }
+        status:
+          type: string
+          enum: [pending, sent, disproportionate_effort]
+        rationale: { type: string }
+    RecipientNoticeCreate:
+      type: object
+      required: [orderId, recipientNodeId]
+      properties:
+        orderId: { type: string }
+        recipientNodeId: { type: string }
+        disproportionateEffort: { type: boolean }
+        rationale: { type: string }
+    EvidencePack:
+      type: object
+      required: [id, orderId, status]
+      properties:
+        id: { type: string }
+        orderId: { type: string }
+        status:
+          type: string
+          enum: [draft, sealed]
+        packHash: { type: string }
+        sealedAt: { type: string, format: date-time }
+
+    DataEnvelopeProcessorNode:
+      type: object
+      required: [data, meta]
+      properties:
+        data:
+          $ref: "#/components/schemas/ProcessorNode"
+        meta:
+          $ref: "#/components/schemas/ResponseMeta"
+    ListEnvelopeProcessorNode:
+      type: object
+      required: [data, meta]
+      properties:
+        data:
+          type: object
+          required: [items]
+          properties:
+            items:
+              type: array
+              items:
+                $ref: "#/components/schemas/ProcessorNode"
+            nextCursor:
+              type: string
+        meta:
+          $ref: "#/components/schemas/ResponseMeta"
+
+    DataEnvelopeGraphEdge:
+      type: object
+      required: [data, meta]
+      properties:
+        data:
+          $ref: "#/components/schemas/GraphEdge"
+        meta:
+          $ref: "#/components/schemas/ResponseMeta"
+    ListEnvelopeGraphEdge:
+      type: object
+      required: [data, meta]
+      properties:
+        data:
+          type: object
+          required: [items]
+          properties:
+            items:
+              type: array
+              items:
+                $ref: "#/components/schemas/GraphEdge"
+            nextCursor:
+              type: string
+        meta:
+          $ref: "#/components/schemas/ResponseMeta"
+
+    DataEnvelopeErasureOrder:
+      type: object
+      required: [data, meta]
+      properties:
+        data:
+          $ref: "#/components/schemas/ErasureOrder"
+        meta:
+          $ref: "#/components/schemas/ResponseMeta"
+    ListEnvelopeErasureOrder:
+      type: object
+      required: [data, meta]
+      properties:
+        data:
+          type: object
+          required: [items]
+          properties:
+            items:
+              type: array
+              items:
+                $ref: "#/components/schemas/ErasureOrder"
+            nextCursor:
+              type: string
+        meta:
+          $ref: "#/components/schemas/ResponseMeta"
+
+    DataEnvelopeErasureTask:
+      type: object
+      required: [data, meta]
+      properties:
+        data:
+          $ref: "#/components/schemas/ErasureTask"
+        meta:
+          $ref: "#/components/schemas/ResponseMeta"
+    ListEnvelopeErasureTask:
+      type: object
+      required: [data, meta]
+      properties:
+        data:
+          type: object
+          required: [items]
+          properties:
+            items:
+              type: array
+              items:
+                $ref: "#/components/schemas/ErasureTask"
+            nextCursor:
+              type: string
+        meta:
+          $ref: "#/components/schemas/ResponseMeta"
+
+    DataEnvelopeDerivedArtefact:
+      type: object
+      required: [data, meta]
+      properties:
+        data:
+          $ref: "#/components/schemas/DerivedArtefact"
+        meta:
+          $ref: "#/components/schemas/ResponseMeta"
+    ListEnvelopeDerivedArtefact:
+      type: object
+      required: [data, meta]
+      properties:
+        data:
+          type: object
+          required: [items]
+          properties:
+            items:
+              type: array
+              items:
+                $ref: "#/components/schemas/DerivedArtefact"
+            nextCursor:
+              type: string
+        meta:
+          $ref: "#/components/schemas/ResponseMeta"
+
+    DataEnvelopeRecipientNotice:
+      type: object
+      required: [data, meta]
+      properties:
+        data:
+          $ref: "#/components/schemas/RecipientNotice"
+        meta:
+          $ref: "#/components/schemas/ResponseMeta"
+    ListEnvelopeRecipientNotice:
+      type: object
+      required: [data, meta]
+      properties:
+        data:
+          type: object
+          required: [items]
+          properties:
+            items:
+              type: array
+              items:
+                $ref: "#/components/schemas/RecipientNotice"
+            nextCursor:
+              type: string
+        meta:
+          $ref: "#/components/schemas/ResponseMeta"
+
+    DataEnvelopeEvidencePack:
+      type: object
+      required: [data, meta]
+      properties:
+        data:
+          $ref: "#/components/schemas/EvidencePack"
+        meta:
+          $ref: "#/components/schemas/ResponseMeta"
+    ListEnvelopeEvidencePack:
+      type: object
+      required: [data, meta]
+      properties:
+        data:
+          type: object
+          required: [items]
+          properties:
+            items:
+              type: array
+              items:
+                $ref: "#/components/schemas/EvidencePack"
+            nextCursor:
+              type: string
+        meta:
+          $ref: "#/components/schemas/ResponseMeta"

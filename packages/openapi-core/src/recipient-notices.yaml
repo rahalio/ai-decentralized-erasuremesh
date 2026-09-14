@@ -1,0 +1,142 @@
+openapi: 3.1.0
+info:
+  title: Recipient Notices API
+  version: 0.1.0
+  description: |
+    Notify prior recipients of erasure, or record disproportionate-effort exemption (BR-4).
+  x-domain: rcn
+  license:
+    name: Proprietary
+servers:
+  - url: https://api.erasuremesh.local
+security:
+  - bearerAuth: []
+  - apiKey: []
+tags:
+  - name: RecipientNotices
+paths:
+  /v1/recipient-notices:
+    get:
+      operationId: listRecipientNotices
+      tags: [RecipientNotices]
+      summary: List recipient notices
+      parameters:
+        - $ref: ./common/parameters.yaml#/components/parameters/Cursor
+        - $ref: ./common/parameters.yaml#/components/parameters/Limit
+        - name: orderId
+          in: query
+          schema:
+            $ref: ./common/primitives.yaml#/components/schemas/ErasureOrderId
+        - name: status
+          in: query
+          schema:
+            $ref: ./recipient-notices.schemas.yaml#/components/schemas/NoticeStatus
+      responses:
+        '200':
+          description: Notices page
+          content:
+            application/json:
+              schema:
+                $ref: ./recipient-notices.schemas.yaml#/components/schemas/RecipientNoticeListResponse
+        '401':
+          $ref: ./common/responses.yaml#/components/responses/Unauthorized
+        default:
+          $ref: ./common/responses.yaml#/components/responses/Problem
+    post:
+      operationId: createRecipientNotice
+      tags: [RecipientNotices]
+      summary: Create recipient notice
+      parameters:
+        - $ref: ./common/parameters.yaml#/components/parameters/IdempotencyKey
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: ./recipient-notices.schemas.yaml#/components/schemas/RecipientNoticeCreate
+      responses:
+        '201':
+          description: Notice created
+          content:
+            application/json:
+              schema:
+                $ref: ./recipient-notices.schemas.yaml#/components/schemas/RecipientNoticeResponse
+        '400':
+          $ref: ./common/responses.yaml#/components/responses/BadRequest
+        '401':
+          $ref: ./common/responses.yaml#/components/responses/Unauthorized
+        default:
+          $ref: ./common/responses.yaml#/components/responses/Problem
+
+  /v1/recipient-notices/{noticeId}/send:
+    post:
+      operationId: sendRecipientNotice
+      tags: [RecipientNotices]
+      summary: Mark notice as sent
+      parameters:
+        - name: noticeId
+          in: path
+          required: true
+          schema:
+            $ref: ./common/primitives.yaml#/components/schemas/RecipientNoticeId
+        - $ref: ./common/parameters.yaml#/components/parameters/IdempotencyKey
+      requestBody:
+        required: false
+        content:
+          application/json:
+            schema:
+              $ref: ./recipient-notices.schemas.yaml#/components/schemas/MarkNoticeSentRequest
+      responses:
+        '200':
+          description: Notice sent
+          content:
+            application/json:
+              schema:
+                $ref: ./recipient-notices.schemas.yaml#/components/schemas/RecipientNoticeResponse
+        '401':
+          $ref: ./common/responses.yaml#/components/responses/Unauthorized
+        '404':
+          $ref: ./common/responses.yaml#/components/responses/NotFound
+        default:
+          $ref: ./common/responses.yaml#/components/responses/Problem
+
+  /v1/recipient-notices/{noticeId}/disproportionate-effort:
+    post:
+      operationId: markRecipientNoticeDisproportionate
+      tags: [RecipientNotices]
+      summary: Record disproportionate-effort exemption
+      parameters:
+        - name: noticeId
+          in: path
+          required: true
+          schema:
+            $ref: ./common/primitives.yaml#/components/schemas/RecipientNoticeId
+        - $ref: ./common/parameters.yaml#/components/parameters/IdempotencyKey
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: ./recipient-notices.schemas.yaml#/components/schemas/MarkDisproportionateRequest
+      responses:
+        '200':
+          description: Exemption recorded
+          content:
+            application/json:
+              schema:
+                $ref: ./recipient-notices.schemas.yaml#/components/schemas/RecipientNoticeResponse
+        '400':
+          $ref: ./common/responses.yaml#/components/responses/BadRequest
+        '401':
+          $ref: ./common/responses.yaml#/components/responses/Unauthorized
+        '404':
+          $ref: ./common/responses.yaml#/components/responses/NotFound
+        default:
+          $ref: ./common/responses.yaml#/components/responses/Problem
+
+components:
+  securitySchemes:
+    apiKey:
+      $ref: ./common/security.yaml#/components/securitySchemes/apiKey
+    bearerAuth:
+      $ref: ./common/security.yaml#/components/securitySchemes/bearerAuth

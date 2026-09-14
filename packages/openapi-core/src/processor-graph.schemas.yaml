@@ -1,0 +1,215 @@
+openapi: 3.1.0
+info:
+  title: Processor Graph schemas
+  version: 0.1.0
+  description: Controller → processor → sub-processor graph entities.
+paths: {}
+components:
+  schemas:
+    ProcessorNodeRole:
+      type: string
+      enum: [controller, processor, sub_processor]
+
+    ProcessorNodeStatus:
+      type: string
+      enum: [active, suspended]
+
+    ContractualRole:
+      type: string
+      description: Liability role recorded per edge (BR-8).
+      enum: [controller, processor, joint]
+
+    ProcessorNode:
+      type: object
+      description: Party/system node in the processor liability graph.
+      required: [id, name, role, status, critical, createdAt, updatedAt]
+      x-dynamodb:
+        entityType: PROCESSOR_NODE
+        pkPattern: entity
+        pkPatternTemplate: "PROCESSOR_NODE#${id}"
+        skPatternTemplate: "METADATA"
+      properties:
+        id:
+          $ref: ./common/primitives.yaml#/components/schemas/ProcessorNodeId
+        name:
+          type: string
+          minLength: 1
+          maxLength: 200
+        role:
+          $ref: '#/components/schemas/ProcessorNodeRole'
+        status:
+          $ref: '#/components/schemas/ProcessorNodeStatus'
+        critical:
+          type: boolean
+          description: Critical nodes block order completion when overdue (BR-1, BR-7).
+          default: false
+        acknowledgementEndpoint:
+          type: string
+          format: uri
+        contactEmail:
+          type: string
+          format: email
+        createdAt:
+          type: string
+          format: date-time
+        updatedAt:
+          type: string
+          format: date-time
+
+    ProcessorNodeCreate:
+      type: object
+      required: [name, role]
+      properties:
+        name:
+          type: string
+          minLength: 1
+          maxLength: 200
+        role:
+          $ref: '#/components/schemas/ProcessorNodeRole'
+        critical:
+          type: boolean
+          default: false
+        acknowledgementEndpoint:
+          type: string
+          format: uri
+        contactEmail:
+          type: string
+          format: email
+
+    ProcessorNodeUpdate:
+      type: object
+      properties:
+        name:
+          type: string
+          minLength: 1
+          maxLength: 200
+        status:
+          $ref: '#/components/schemas/ProcessorNodeStatus'
+        critical:
+          type: boolean
+        acknowledgementEndpoint:
+          type: string
+          format: uri
+        contactEmail:
+          type: string
+          format: email
+
+    GraphEdge:
+      type: object
+      description: Directed edge with contractual role (BR-8).
+      required: [id, fromNodeId, toNodeId, contractualRole, createdAt]
+      x-dynamodb:
+        entityType: GRAPH_EDGE
+        pkPattern: entity
+        pkPatternTemplate: "GRAPH_EDGE#${id}"
+        skPatternTemplate: "METADATA"
+      properties:
+        id:
+          $ref: ./common/primitives.yaml#/components/schemas/GraphEdgeId
+        fromNodeId:
+          $ref: ./common/primitives.yaml#/components/schemas/ProcessorNodeId
+        toNodeId:
+          $ref: ./common/primitives.yaml#/components/schemas/ProcessorNodeId
+        contractualRole:
+          $ref: '#/components/schemas/ContractualRole'
+        contractualBasis:
+          type: string
+          maxLength: 500
+        createdAt:
+          type: string
+          format: date-time
+
+    GraphEdgeCreate:
+      type: object
+      required: [fromNodeId, toNodeId, contractualRole]
+      properties:
+        fromNodeId:
+          $ref: ./common/primitives.yaml#/components/schemas/ProcessorNodeId
+        toNodeId:
+          $ref: ./common/primitives.yaml#/components/schemas/ProcessorNodeId
+        contractualRole:
+          $ref: '#/components/schemas/ContractualRole'
+        contractualBasis:
+          type: string
+          maxLength: 500
+
+    AckEndpointTestResult:
+      type: object
+      required: [ok, testedAt]
+      properties:
+        ok:
+          type: boolean
+        statusCode:
+          type: integer
+        detail:
+          type: string
+        testedAt:
+          type: string
+          format: date-time
+
+    ProcessorNodeListData:
+      type: object
+      required: [items]
+      properties:
+        items:
+          type: array
+          items:
+            $ref: '#/components/schemas/ProcessorNode'
+        nextCursor:
+          type: string
+
+    GraphEdgeListData:
+      type: object
+      required: [items]
+      properties:
+        items:
+          type: array
+          items:
+            $ref: '#/components/schemas/GraphEdge'
+        nextCursor:
+          type: string
+
+    ProcessorNodeResponse:
+      type: object
+      required: [data]
+      properties:
+        data:
+          $ref: '#/components/schemas/ProcessorNode'
+        meta:
+          $ref: ./common/envelopes.yaml#/components/schemas/ResponseMeta
+
+    ProcessorNodeListResponse:
+      type: object
+      required: [data]
+      properties:
+        data:
+          $ref: '#/components/schemas/ProcessorNodeListData'
+        meta:
+          $ref: ./common/envelopes.yaml#/components/schemas/ResponseMeta
+
+    GraphEdgeResponse:
+      type: object
+      required: [data]
+      properties:
+        data:
+          $ref: '#/components/schemas/GraphEdge'
+        meta:
+          $ref: ./common/envelopes.yaml#/components/schemas/ResponseMeta
+
+    GraphEdgeListResponse:
+      type: object
+      required: [data]
+      properties:
+        data:
+          $ref: '#/components/schemas/GraphEdgeListData'
+        meta:
+          $ref: ./common/envelopes.yaml#/components/schemas/ResponseMeta
+
+    AckEndpointTestResponse:
+      type: object
+      required: [data]
+      properties:
+        data:
+          $ref: '#/components/schemas/AckEndpointTestResult'
+        meta:
+          $ref: ./common/envelopes.yaml#/components/schemas/ResponseMeta

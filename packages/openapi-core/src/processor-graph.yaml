@@ -1,0 +1,204 @@
+openapi: 3.1.0
+info:
+  title: Processor Graph API
+  version: 0.1.0
+  description: |
+    Maintain controller → processor → sub-processor liability graph (BR-1, BR-8).
+  x-domain: pgr
+  license:
+    name: Proprietary
+servers:
+  - url: https://api.erasuremesh.local
+    description: Local / product API
+security:
+  - bearerAuth: []
+  - apiKey: []
+tags:
+  - name: ProcessorNodes
+    description: Graph nodes (parties / systems)
+  - name: GraphEdges
+    description: Directed contractual edges
+paths:
+  /v1/processor-nodes:
+    get:
+      operationId: listProcessorNodes
+      tags: [ProcessorNodes]
+      summary: List processor nodes
+      parameters:
+        - $ref: ./common/parameters.yaml#/components/parameters/Cursor
+        - $ref: ./common/parameters.yaml#/components/parameters/Limit
+        - name: status
+          in: query
+          schema:
+            $ref: ./processor-graph.schemas.yaml#/components/schemas/ProcessorNodeStatus
+        - name: critical
+          in: query
+          schema:
+            type: boolean
+      responses:
+        '200':
+          description: Processor nodes page
+          content:
+            application/json:
+              schema:
+                $ref: ./processor-graph.schemas.yaml#/components/schemas/ProcessorNodeListResponse
+        '401':
+          $ref: ./common/responses.yaml#/components/responses/Unauthorized
+        default:
+          $ref: ./common/responses.yaml#/components/responses/Problem
+    post:
+      operationId: registerProcessorNode
+      tags: [ProcessorNodes]
+      summary: Register a processor node
+      parameters:
+        - $ref: ./common/parameters.yaml#/components/parameters/IdempotencyKey
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: ./processor-graph.schemas.yaml#/components/schemas/ProcessorNodeCreate
+      responses:
+        '201':
+          description: Node registered
+          content:
+            application/json:
+              schema:
+                $ref: ./processor-graph.schemas.yaml#/components/schemas/ProcessorNodeResponse
+        '400':
+          $ref: ./common/responses.yaml#/components/responses/BadRequest
+        '401':
+          $ref: ./common/responses.yaml#/components/responses/Unauthorized
+        default:
+          $ref: ./common/responses.yaml#/components/responses/Problem
+
+  /v1/processor-nodes/{nodeId}:
+    parameters:
+      - name: nodeId
+        in: path
+        required: true
+        schema:
+          $ref: ./common/primitives.yaml#/components/schemas/ProcessorNodeId
+    get:
+      operationId: getProcessorNode
+      tags: [ProcessorNodes]
+      summary: Get processor node
+      responses:
+        '200':
+          description: Node
+          content:
+            application/json:
+              schema:
+                $ref: ./processor-graph.schemas.yaml#/components/schemas/ProcessorNodeResponse
+        '401':
+          $ref: ./common/responses.yaml#/components/responses/Unauthorized
+        '404':
+          $ref: ./common/responses.yaml#/components/responses/NotFound
+        default:
+          $ref: ./common/responses.yaml#/components/responses/Problem
+    patch:
+      operationId: updateProcessorNode
+      tags: [ProcessorNodes]
+      summary: Update processor node
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: ./processor-graph.schemas.yaml#/components/schemas/ProcessorNodeUpdate
+      responses:
+        '200':
+          description: Updated node
+          content:
+            application/json:
+              schema:
+                $ref: ./processor-graph.schemas.yaml#/components/schemas/ProcessorNodeResponse
+        '400':
+          $ref: ./common/responses.yaml#/components/responses/BadRequest
+        '401':
+          $ref: ./common/responses.yaml#/components/responses/Unauthorized
+        '404':
+          $ref: ./common/responses.yaml#/components/responses/NotFound
+        default:
+          $ref: ./common/responses.yaml#/components/responses/Problem
+
+  /v1/processor-nodes/{nodeId}/test-acknowledgement-endpoint:
+    post:
+      operationId: testProcessorNodeAckEndpoint
+      tags: [ProcessorNodes]
+      summary: Probe node acknowledgement endpoint
+      parameters:
+        - name: nodeId
+          in: path
+          required: true
+          schema:
+            $ref: ./common/primitives.yaml#/components/schemas/ProcessorNodeId
+        - $ref: ./common/parameters.yaml#/components/parameters/IdempotencyKey
+      x-repository: none
+      responses:
+        '200':
+          description: Probe result
+          content:
+            application/json:
+              schema:
+                $ref: ./processor-graph.schemas.yaml#/components/schemas/AckEndpointTestResponse
+        '401':
+          $ref: ./common/responses.yaml#/components/responses/Unauthorized
+        '404':
+          $ref: ./common/responses.yaml#/components/responses/NotFound
+        default:
+          $ref: ./common/responses.yaml#/components/responses/Problem
+
+  /v1/processor-graph/edges:
+    get:
+      operationId: listProcessorGraphEdges
+      tags: [GraphEdges]
+      summary: List graph edges
+      parameters:
+        - $ref: ./common/parameters.yaml#/components/parameters/Cursor
+        - $ref: ./common/parameters.yaml#/components/parameters/Limit
+      responses:
+        '200':
+          description: Edges page
+          content:
+            application/json:
+              schema:
+                $ref: ./processor-graph.schemas.yaml#/components/schemas/GraphEdgeListResponse
+        '401':
+          $ref: ./common/responses.yaml#/components/responses/Unauthorized
+        default:
+          $ref: ./common/responses.yaml#/components/responses/Problem
+    post:
+      operationId: linkProcessorEdge
+      tags: [GraphEdges]
+      summary: Create graph edge with contractual role
+      parameters:
+        - $ref: ./common/parameters.yaml#/components/parameters/IdempotencyKey
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: ./processor-graph.schemas.yaml#/components/schemas/GraphEdgeCreate
+      responses:
+        '201':
+          description: Edge created
+          content:
+            application/json:
+              schema:
+                $ref: ./processor-graph.schemas.yaml#/components/schemas/GraphEdgeResponse
+        '400':
+          $ref: ./common/responses.yaml#/components/responses/BadRequest
+        '401':
+          $ref: ./common/responses.yaml#/components/responses/Unauthorized
+        '404':
+          $ref: ./common/responses.yaml#/components/responses/NotFound
+        default:
+          $ref: ./common/responses.yaml#/components/responses/Problem
+
+components:
+  securitySchemes:
+    apiKey:
+      $ref: ./common/security.yaml#/components/securitySchemes/apiKey
+    bearerAuth:
+      $ref: ./common/security.yaml#/components/securitySchemes/bearerAuth

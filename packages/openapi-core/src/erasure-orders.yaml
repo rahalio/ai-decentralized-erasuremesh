@@ -1,0 +1,290 @@
+openapi: 3.1.0
+info:
+  title: Erasure Orders API
+  version: 0.1.0
+  description: |
+    Intake, SLA clock, fan-out tasks, acknowledgements, completion policy (BR-3, BR-6, BR-7, BR-12).
+  x-domain: ero
+  license:
+    name: Proprietary
+servers:
+  - url: https://api.erasuremesh.local
+security:
+  - bearerAuth: []
+  - apiKey: []
+tags:
+  - name: ErasureOrders
+  - name: ErasureTasks
+paths:
+  /v1/erasure-orders:
+    get:
+      operationId: listErasureOrders
+      tags: [ErasureOrders]
+      summary: List erasure orders
+      parameters:
+        - $ref: ./common/parameters.yaml#/components/parameters/Cursor
+        - $ref: ./common/parameters.yaml#/components/parameters/Limit
+        - name: status
+          in: query
+          schema:
+            $ref: ./erasure-orders.schemas.yaml#/components/schemas/ErasureOrderStatus
+        - name: tenantId
+          in: query
+          schema:
+            $ref: ./common/primitives.yaml#/components/schemas/TenantId
+      responses:
+        '200':
+          description: Orders page
+          content:
+            application/json:
+              schema:
+                $ref: ./erasure-orders.schemas.yaml#/components/schemas/ErasureOrderListResponse
+        '401':
+          $ref: ./common/responses.yaml#/components/responses/Unauthorized
+        default:
+          $ref: ./common/responses.yaml#/components/responses/Problem
+    post:
+      operationId: createErasureOrder
+      tags: [ErasureOrders]
+      summary: Open an erasure order
+      parameters:
+        - $ref: ./common/parameters.yaml#/components/parameters/IdempotencyKey
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: ./erasure-orders.schemas.yaml#/components/schemas/ErasureOrderCreate
+      responses:
+        '201':
+          description: Order created
+          content:
+            application/json:
+              schema:
+                $ref: ./erasure-orders.schemas.yaml#/components/schemas/ErasureOrderResponse
+        '400':
+          $ref: ./common/responses.yaml#/components/responses/BadRequest
+        '401':
+          $ref: ./common/responses.yaml#/components/responses/Unauthorized
+        default:
+          $ref: ./common/responses.yaml#/components/responses/Problem
+
+  /v1/erasure-orders/{orderId}:
+    parameters:
+      - name: orderId
+        in: path
+        required: true
+        schema:
+          $ref: ./common/primitives.yaml#/components/schemas/ErasureOrderId
+    get:
+      operationId: getErasureOrder
+      tags: [ErasureOrders]
+      summary: Get erasure order
+      responses:
+        '200':
+          description: Order
+          content:
+            application/json:
+              schema:
+                $ref: ./erasure-orders.schemas.yaml#/components/schemas/ErasureOrderResponse
+        '401':
+          $ref: ./common/responses.yaml#/components/responses/Unauthorized
+        '404':
+          $ref: ./common/responses.yaml#/components/responses/NotFound
+        default:
+          $ref: ./common/responses.yaml#/components/responses/Problem
+
+  /v1/erasure-orders/{orderId}/dispatch:
+    post:
+      operationId: dispatchErasureOrder
+      tags: [ErasureOrders]
+      summary: Fan out tasks across processor graph
+      parameters:
+        - name: orderId
+          in: path
+          required: true
+          schema:
+            $ref: ./common/primitives.yaml#/components/schemas/ErasureOrderId
+        - $ref: ./common/parameters.yaml#/components/parameters/IdempotencyKey
+      responses:
+        '200':
+          description: Order after dispatch
+          content:
+            application/json:
+              schema:
+                $ref: ./erasure-orders.schemas.yaml#/components/schemas/ErasureOrderResponse
+        '401':
+          $ref: ./common/responses.yaml#/components/responses/Unauthorized
+        '404':
+          $ref: ./common/responses.yaml#/components/responses/NotFound
+        '409':
+          $ref: ./common/responses.yaml#/components/responses/Conflict
+        default:
+          $ref: ./common/responses.yaml#/components/responses/Problem
+
+  /v1/erasure-orders/{orderId}/sla-extensions:
+    post:
+      operationId: extendErasureOrderSla
+      tags: [ErasureOrders]
+      summary: Record documented SLA extension
+      parameters:
+        - name: orderId
+          in: path
+          required: true
+          schema:
+            $ref: ./common/primitives.yaml#/components/schemas/ErasureOrderId
+        - $ref: ./common/parameters.yaml#/components/parameters/IdempotencyKey
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: ./erasure-orders.schemas.yaml#/components/schemas/SlaExtensionCreate
+      responses:
+        '200':
+          description: Order with extension
+          content:
+            application/json:
+              schema:
+                $ref: ./erasure-orders.schemas.yaml#/components/schemas/ErasureOrderResponse
+        '400':
+          $ref: ./common/responses.yaml#/components/responses/BadRequest
+        '401':
+          $ref: ./common/responses.yaml#/components/responses/Unauthorized
+        '404':
+          $ref: ./common/responses.yaml#/components/responses/NotFound
+        default:
+          $ref: ./common/responses.yaml#/components/responses/Problem
+
+  /v1/erasure-orders/{orderId}/completion-policy:
+    get:
+      operationId: getErasureOrderCompletionPolicy
+      tags: [ErasureOrders]
+      summary: Evaluate completion gates (BR-1, BR-2, BR-4, BR-12)
+      parameters:
+        - name: orderId
+          in: path
+          required: true
+          schema:
+            $ref: ./common/primitives.yaml#/components/schemas/ErasureOrderId
+      x-repository: none
+      responses:
+        '200':
+          description: Gate checklist
+          content:
+            application/json:
+              schema:
+                $ref: ./erasure-orders.schemas.yaml#/components/schemas/CompletionPolicyResponse
+        '401':
+          $ref: ./common/responses.yaml#/components/responses/Unauthorized
+        '404':
+          $ref: ./common/responses.yaml#/components/responses/NotFound
+        default:
+          $ref: ./common/responses.yaml#/components/responses/Problem
+
+  /v1/erasure-orders/{orderId}/complete:
+    post:
+      operationId: completeErasureOrder
+      tags: [ErasureOrders]
+      summary: Mark order complete if gates pass
+      parameters:
+        - name: orderId
+          in: path
+          required: true
+          schema:
+            $ref: ./common/primitives.yaml#/components/schemas/ErasureOrderId
+        - $ref: ./common/parameters.yaml#/components/parameters/IdempotencyKey
+      responses:
+        '200':
+          description: Completed order
+          content:
+            application/json:
+              schema:
+                $ref: ./erasure-orders.schemas.yaml#/components/schemas/ErasureOrderResponse
+        '401':
+          $ref: ./common/responses.yaml#/components/responses/Unauthorized
+        '404':
+          $ref: ./common/responses.yaml#/components/responses/NotFound
+        '409':
+          description: Completion blocked (Lori-Smith / graph / notices)
+          content:
+            application/json:
+              schema:
+                $ref: ./common/problem.yaml#/components/schemas/Problem
+        default:
+          $ref: ./common/responses.yaml#/components/responses/Problem
+
+  /v1/erasure-orders/{orderId}/tasks:
+    get:
+      operationId: listErasureOrderTasks
+      tags: [ErasureTasks]
+      summary: List fan-out tasks for an order
+      parameters:
+        - name: orderId
+          in: path
+          required: true
+          schema:
+            $ref: ./common/primitives.yaml#/components/schemas/ErasureOrderId
+        - $ref: ./common/parameters.yaml#/components/parameters/Cursor
+        - $ref: ./common/parameters.yaml#/components/parameters/Limit
+      responses:
+        '200':
+          description: Tasks page
+          content:
+            application/json:
+              schema:
+                $ref: ./erasure-orders.schemas.yaml#/components/schemas/ErasureTaskListResponse
+        '401':
+          $ref: ./common/responses.yaml#/components/responses/Unauthorized
+        '404':
+          $ref: ./common/responses.yaml#/components/responses/NotFound
+        default:
+          $ref: ./common/responses.yaml#/components/responses/Problem
+
+  /v1/erasure-orders/{orderId}/tasks/{taskId}/acknowledgement:
+    post:
+      operationId: acknowledgeErasureTask
+      tags: [ErasureTasks]
+      summary: Processor acknowledgement (portal / API key)
+      security:
+        - apiKey: []
+      parameters:
+        - name: orderId
+          in: path
+          required: true
+          schema:
+            $ref: ./common/primitives.yaml#/components/schemas/ErasureOrderId
+        - name: taskId
+          in: path
+          required: true
+          schema:
+            $ref: ./common/primitives.yaml#/components/schemas/ErasureTaskId
+        - $ref: ./common/parameters.yaml#/components/parameters/IdempotencyKey
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: ./erasure-orders.schemas.yaml#/components/schemas/TaskAcknowledgement
+      responses:
+        '200':
+          description: Acknowledgement recorded
+          content:
+            application/json:
+              schema:
+                $ref: ./erasure-orders.schemas.yaml#/components/schemas/ErasureTaskResponse
+        '400':
+          $ref: ./common/responses.yaml#/components/responses/BadRequest
+        '401':
+          $ref: ./common/responses.yaml#/components/responses/Unauthorized
+        '404':
+          $ref: ./common/responses.yaml#/components/responses/NotFound
+        default:
+          $ref: ./common/responses.yaml#/components/responses/Problem
+
+components:
+  securitySchemes:
+    apiKey:
+      $ref: ./common/security.yaml#/components/securitySchemes/apiKey
+    bearerAuth:
+      $ref: ./common/security.yaml#/components/securitySchemes/bearerAuth

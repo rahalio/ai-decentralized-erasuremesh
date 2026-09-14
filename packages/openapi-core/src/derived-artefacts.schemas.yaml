@@ -1,0 +1,133 @@
+openapi: 3.1.0
+info:
+  title: Derived Artefacts schemas
+  version: 0.1.0
+  description: Personas, embeddings, segments — Lori-Smith residue (BR-2, BR-12).
+paths: {}
+components:
+  schemas:
+    ArtefactType:
+      type: string
+      enum: [persona, embedding, segment_membership, model_weight_contribution]
+
+    ArtefactStatus:
+      type: string
+      enum: [identified, purge_pending, purged, exempt]
+
+    PurgeMethod:
+      type: string
+      enum: [delete, retrain_exclude, suppress]
+
+    DerivedArtefact:
+      type: object
+      required:
+        - id
+        - orderId
+        - subjectRef
+        - artefactType
+        - status
+        - blocksCompletion
+        - createdAt
+        - updatedAt
+      x-dynamodb:
+        entityType: DERIVED_ARTEFACT
+        pkPattern: entity
+        pkPatternTemplate: "DERIVED_ARTEFACT#${id}"
+        skPatternTemplate: "METADATA"
+      properties:
+        id:
+          $ref: ./common/primitives.yaml#/components/schemas/DerivedArtefactId
+        orderId:
+          $ref: ./common/primitives.yaml#/components/schemas/ErasureOrderId
+        subjectRef:
+          type: string
+          minLength: 1
+          maxLength: 200
+        artefactType:
+          $ref: '#/components/schemas/ArtefactType'
+        status:
+          $ref: '#/components/schemas/ArtefactStatus'
+        blocksCompletion:
+          type: boolean
+          description: Unaddressed artefacts refuse order complete (BR-12).
+          default: true
+        systemName:
+          type: string
+        purgeProofHash:
+          type: string
+        purgeMethod:
+          $ref: '#/components/schemas/PurgeMethod'
+        exemptRationale:
+          type: string
+        cohortRefreshBlocked:
+          type: boolean
+          default: false
+        createdAt:
+          type: string
+          format: date-time
+        updatedAt:
+          type: string
+          format: date-time
+
+    DerivedArtefactCreate:
+      type: object
+      required: [orderId, subjectRef, artefactType]
+      properties:
+        orderId:
+          $ref: ./common/primitives.yaml#/components/schemas/ErasureOrderId
+        subjectRef:
+          type: string
+          minLength: 1
+          maxLength: 200
+        artefactType:
+          $ref: '#/components/schemas/ArtefactType'
+        systemName:
+          type: string
+
+    PurgeDerivedArtefactRequest:
+      type: object
+      required: [purgeProofHash]
+      properties:
+        purgeProofHash:
+          type: string
+          minLength: 1
+        method:
+          $ref: '#/components/schemas/PurgeMethod'
+
+    ExemptDerivedArtefactRequest:
+      type: object
+      required: [rationale]
+      properties:
+        rationale:
+          type: string
+          minLength: 1
+          maxLength: 4000
+
+    DerivedArtefactListData:
+      type: object
+      required: [items]
+      properties:
+        items:
+          type: array
+          items:
+            $ref: '#/components/schemas/DerivedArtefact'
+        nextCursor:
+          type: string
+
+    DerivedArtefactResponse:
+      type: object
+      required: [data]
+      properties:
+        data:
+          $ref: '#/components/schemas/DerivedArtefact'
+        meta:
+          $ref: ./common/envelopes.yaml#/components/schemas/ResponseMeta
+
+    DerivedArtefactListResponse:
+      type: object
+      required: [data]
+      properties:
+        data:
+          $ref: '#/components/schemas/DerivedArtefactListData'
+        meta:
+          $ref: ./common/envelopes.yaml#/components/schemas/ResponseMeta

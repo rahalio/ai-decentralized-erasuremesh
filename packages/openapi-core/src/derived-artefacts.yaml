@@ -1,0 +1,195 @@
+openapi: 3.1.0
+info:
+  title: Derived Artefacts API
+  version: 0.1.0
+  description: |
+    Registry and purge of ML-derived personas/embeddings/segments (BR-2, BR-12).
+  x-domain: dar
+  license:
+    name: Proprietary
+servers:
+  - url: https://api.erasuremesh.local
+security:
+  - bearerAuth: []
+  - apiKey: []
+tags:
+  - name: DerivedArtefacts
+paths:
+  /v1/derived-artefacts:
+    get:
+      operationId: listDerivedArtefacts
+      tags: [DerivedArtefacts]
+      summary: List derived artefacts
+      parameters:
+        - $ref: ./common/parameters.yaml#/components/parameters/Cursor
+        - $ref: ./common/parameters.yaml#/components/parameters/Limit
+        - name: orderId
+          in: query
+          schema:
+            $ref: ./common/primitives.yaml#/components/schemas/ErasureOrderId
+        - name: status
+          in: query
+          schema:
+            $ref: ./derived-artefacts.schemas.yaml#/components/schemas/ArtefactStatus
+      responses:
+        '200':
+          description: Artefacts page
+          content:
+            application/json:
+              schema:
+                $ref: ./derived-artefacts.schemas.yaml#/components/schemas/DerivedArtefactListResponse
+        '401':
+          $ref: ./common/responses.yaml#/components/responses/Unauthorized
+        default:
+          $ref: ./common/responses.yaml#/components/responses/Problem
+    post:
+      operationId: registerDerivedArtefact
+      tags: [DerivedArtefacts]
+      summary: Register a derived artefact against an order
+      parameters:
+        - $ref: ./common/parameters.yaml#/components/parameters/IdempotencyKey
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: ./derived-artefacts.schemas.yaml#/components/schemas/DerivedArtefactCreate
+      responses:
+        '201':
+          description: Artefact registered
+          content:
+            application/json:
+              schema:
+                $ref: ./derived-artefacts.schemas.yaml#/components/schemas/DerivedArtefactResponse
+        '400':
+          $ref: ./common/responses.yaml#/components/responses/BadRequest
+        '401':
+          $ref: ./common/responses.yaml#/components/responses/Unauthorized
+        default:
+          $ref: ./common/responses.yaml#/components/responses/Problem
+
+  /v1/derived-artefacts/{artefactId}:
+    get:
+      operationId: getDerivedArtefact
+      tags: [DerivedArtefacts]
+      summary: Get derived artefact
+      parameters:
+        - name: artefactId
+          in: path
+          required: true
+          schema:
+            $ref: ./common/primitives.yaml#/components/schemas/DerivedArtefactId
+      responses:
+        '200':
+          description: Artefact
+          content:
+            application/json:
+              schema:
+                $ref: ./derived-artefacts.schemas.yaml#/components/schemas/DerivedArtefactResponse
+        '401':
+          $ref: ./common/responses.yaml#/components/responses/Unauthorized
+        '404':
+          $ref: ./common/responses.yaml#/components/responses/NotFound
+        default:
+          $ref: ./common/responses.yaml#/components/responses/Problem
+
+  /v1/derived-artefacts/{artefactId}/purge:
+    post:
+      operationId: purgeDerivedArtefact
+      tags: [DerivedArtefacts]
+      summary: Mark artefact purged with proof hash
+      parameters:
+        - name: artefactId
+          in: path
+          required: true
+          schema:
+            $ref: ./common/primitives.yaml#/components/schemas/DerivedArtefactId
+        - $ref: ./common/parameters.yaml#/components/parameters/IdempotencyKey
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: ./derived-artefacts.schemas.yaml#/components/schemas/PurgeDerivedArtefactRequest
+      responses:
+        '202':
+          description: Purge accepted
+          content:
+            application/json:
+              schema:
+                $ref: ./derived-artefacts.schemas.yaml#/components/schemas/DerivedArtefactResponse
+        '400':
+          $ref: ./common/responses.yaml#/components/responses/BadRequest
+        '401':
+          $ref: ./common/responses.yaml#/components/responses/Unauthorized
+        '404':
+          $ref: ./common/responses.yaml#/components/responses/NotFound
+        default:
+          $ref: ./common/responses.yaml#/components/responses/Problem
+
+  /v1/derived-artefacts/{artefactId}/exempt:
+    post:
+      operationId: exemptDerivedArtefact
+      tags: [DerivedArtefacts]
+      summary: Exempt artefact with rationale
+      parameters:
+        - name: artefactId
+          in: path
+          required: true
+          schema:
+            $ref: ./common/primitives.yaml#/components/schemas/DerivedArtefactId
+        - $ref: ./common/parameters.yaml#/components/parameters/IdempotencyKey
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: ./derived-artefacts.schemas.yaml#/components/schemas/ExemptDerivedArtefactRequest
+      responses:
+        '200':
+          description: Exempted
+          content:
+            application/json:
+              schema:
+                $ref: ./derived-artefacts.schemas.yaml#/components/schemas/DerivedArtefactResponse
+        '400':
+          $ref: ./common/responses.yaml#/components/responses/BadRequest
+        '401':
+          $ref: ./common/responses.yaml#/components/responses/Unauthorized
+        '404':
+          $ref: ./common/responses.yaml#/components/responses/NotFound
+        default:
+          $ref: ./common/responses.yaml#/components/responses/Problem
+
+  /v1/derived-artefacts/{artefactId}/block-cohort-refresh:
+    post:
+      operationId: blockDerivedArtefactCohortRefresh
+      tags: [DerivedArtefacts]
+      summary: Block cohort refresh until scrubbed
+      parameters:
+        - name: artefactId
+          in: path
+          required: true
+          schema:
+            $ref: ./common/primitives.yaml#/components/schemas/DerivedArtefactId
+        - $ref: ./common/parameters.yaml#/components/parameters/IdempotencyKey
+      responses:
+        '200':
+          description: Cohort refresh blocked
+          content:
+            application/json:
+              schema:
+                $ref: ./derived-artefacts.schemas.yaml#/components/schemas/DerivedArtefactResponse
+        '401':
+          $ref: ./common/responses.yaml#/components/responses/Unauthorized
+        '404':
+          $ref: ./common/responses.yaml#/components/responses/NotFound
+        default:
+          $ref: ./common/responses.yaml#/components/responses/Problem
+
+components:
+  securitySchemes:
+    apiKey:
+      $ref: ./common/security.yaml#/components/securitySchemes/apiKey
+    bearerAuth:
+      $ref: ./common/security.yaml#/components/securitySchemes/bearerAuth

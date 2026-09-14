@@ -1,0 +1,106 @@
+openapi: 3.1.0
+info:
+  title: Recipient Notices schemas
+  version: 0.1.0
+  description: Notify prior recipients or record disproportionate effort (BR-4).
+paths: {}
+components:
+  schemas:
+    NoticeStatus:
+      type: string
+      enum: [pending, sent, disproportionate_effort]
+
+    RecipientNotice:
+      type: object
+      required:
+        - id
+        - orderId
+        - recipientNodeId
+        - status
+        - createdAt
+        - updatedAt
+      x-dynamodb:
+        entityType: RECIPIENT_NOTICE
+        pkPattern: entity
+        pkPatternTemplate: "RECIPIENT_NOTICE#${id}"
+        skPatternTemplate: "METADATA"
+      properties:
+        id:
+          $ref: ./common/primitives.yaml#/components/schemas/RecipientNoticeId
+        orderId:
+          $ref: ./common/primitives.yaml#/components/schemas/ErasureOrderId
+        recipientNodeId:
+          $ref: ./common/primitives.yaml#/components/schemas/ProcessorNodeId
+        status:
+          $ref: '#/components/schemas/NoticeStatus'
+        rationale:
+          type: string
+        sentAt:
+          type: string
+          format: date-time
+        createdAt:
+          type: string
+          format: date-time
+        updatedAt:
+          type: string
+          format: date-time
+
+    RecipientNoticeCreate:
+      type: object
+      required: [orderId, recipientNodeId]
+      properties:
+        orderId:
+          $ref: ./common/primitives.yaml#/components/schemas/ErasureOrderId
+        recipientNodeId:
+          $ref: ./common/primitives.yaml#/components/schemas/ProcessorNodeId
+        disproportionateEffort:
+          type: boolean
+          default: false
+        rationale:
+          type: string
+          maxLength: 4000
+
+    MarkNoticeSentRequest:
+      type: object
+      properties:
+        sentAt:
+          type: string
+          format: date-time
+
+    MarkDisproportionateRequest:
+      type: object
+      required: [rationale]
+      properties:
+        rationale:
+          type: string
+          minLength: 1
+          maxLength: 4000
+
+    RecipientNoticeListData:
+      type: object
+      required: [items]
+      properties:
+        items:
+          type: array
+          items:
+            $ref: '#/components/schemas/RecipientNotice'
+        nextCursor:
+          type: string
+
+    RecipientNoticeResponse:
+      type: object
+      required: [data]
+      properties:
+        data:
+          $ref: '#/components/schemas/RecipientNotice'
+        meta:
+          $ref: ./common/envelopes.yaml#/components/schemas/ResponseMeta
+
+    RecipientNoticeListResponse:
+      type: object
+      required: [data]
+      properties:
+        data:
+          $ref: '#/components/schemas/RecipientNoticeListData'
+        meta:
+          $ref: ./common/envelopes.yaml#/components/schemas/ResponseMeta

@@ -1,0 +1,18 @@
+{
+  "name": "@erasuremesh/openapi-core",
+  "version": "0.1.0",
+  "private": true,
+  "description": "OpenAPI contracts for Erasuremesh (common + identity + product domains)",
+  "scripts": {
+    "lint:domains": "redocly lint",
+    "bundle:domains": "mkdir -p src/.bundled && redocly bundle identity --output src/.bundled/identity.openapi.yaml && redocly bundle identity --output src/.bundled/identity.json && redocly bundle processor-graph --output src/.bundled/processor-graph.openapi.yaml && redocly bundle processor-graph --output src/.bundled/processor-graph.json && redocly bundle erasure-orders --output src/.bundled/erasure-orders.openapi.yaml && redocly bundle erasure-orders --output src/.bundled/erasure-orders.json && redocly bundle derived-artefacts --output src/.bundled/derived-artefacts.openapi.yaml && redocly bundle derived-artefacts --output src/.bundled/derived-artefacts.json && redocly bundle recipient-notices --output src/.bundled/recipient-notices.openapi.yaml && redocly bundle recipient-notices --output src/.bundled/recipient-notices.json && redocly bundle evidence-packs --output src/.bundled/evidence-packs.openapi.yaml && redocly bundle evidence-packs --output src/.bundled/evidence-packs.json && redocly bundle exceptions --output src/.bundled/exceptions.openapi.yaml && redocly bundle exceptions --output src/.bundled/exceptions.json",
+    "lint": "pnpm run lint:domains",
+    "bundle": "pnpm run bundle:domains"
+  },
+  "devDependencies": {
+    "@redocly/cli": "^1.34.0"
+  },
+  "engines": {
+    "node": ">=18"
+  }
+}

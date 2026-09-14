@@ -1,0 +1,139 @@
+openapi: 3.1.0
+info:
+  title: Exceptions API
+  version: 0.1.0
+  description: |
+    Dual-control force-close and SLA breach exceptions visible to DPO (BR-7, BR-10).
+  x-domain: exc
+  license:
+    name: Proprietary
+servers:
+  - url: https://api.erasuremesh.local
+security:
+  - bearerAuth: []
+  - apiKey: []
+tags:
+  - name: Exceptions
+paths:
+  /v1/exceptions:
+    get:
+      operationId: listExceptions
+      tags: [Exceptions]
+      summary: List exception records
+      parameters:
+        - $ref: ./common/parameters.yaml#/components/parameters/Cursor
+        - $ref: ./common/parameters.yaml#/components/parameters/Limit
+        - name: status
+          in: query
+          schema:
+            $ref: ./exceptions.schemas.yaml#/components/schemas/ExceptionStatus
+        - name: orderId
+          in: query
+          schema:
+            $ref: ./common/primitives.yaml#/components/schemas/ErasureOrderId
+      responses:
+        '200':
+          description: Exceptions page
+          content:
+            application/json:
+              schema:
+                $ref: ./exceptions.schemas.yaml#/components/schemas/ExceptionListResponse
+        '401':
+          $ref: ./common/responses.yaml#/components/responses/Unauthorized
+        default:
+          $ref: ./common/responses.yaml#/components/responses/Problem
+    post:
+      operationId: createException
+      tags: [Exceptions]
+      summary: Open exception / force-close request
+      parameters:
+        - $ref: ./common/parameters.yaml#/components/parameters/IdempotencyKey
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: ./exceptions.schemas.yaml#/components/schemas/ExceptionCreate
+      responses:
+        '201':
+          description: Exception opened
+          content:
+            application/json:
+              schema:
+                $ref: ./exceptions.schemas.yaml#/components/schemas/ExceptionResponse
+        '400':
+          $ref: ./common/responses.yaml#/components/responses/BadRequest
+        '401':
+          $ref: ./common/responses.yaml#/components/responses/Unauthorized
+        default:
+          $ref: ./common/responses.yaml#/components/responses/Problem
+
+  /v1/exceptions/{exceptionId}:
+    get:
+      operationId: getException
+      tags: [Exceptions]
+      summary: Get exception record
+      parameters:
+        - name: exceptionId
+          in: path
+          required: true
+          schema:
+            $ref: ./common/primitives.yaml#/components/schemas/ExceptionRecordId
+      responses:
+        '200':
+          description: Exception
+          content:
+            application/json:
+              schema:
+                $ref: ./exceptions.schemas.yaml#/components/schemas/ExceptionResponse
+        '401':
+          $ref: ./common/responses.yaml#/components/responses/Unauthorized
+        '404':
+          $ref: ./common/responses.yaml#/components/responses/NotFound
+        default:
+          $ref: ./common/responses.yaml#/components/responses/Problem
+
+  /v1/exceptions/{exceptionId}/decide:
+    post:
+      operationId: decideException
+      tags: [Exceptions]
+      summary: Second-approver dual-control decision
+      parameters:
+        - name: exceptionId
+          in: path
+          required: true
+          schema:
+            $ref: ./common/primitives.yaml#/components/schemas/ExceptionRecordId
+        - $ref: ./common/parameters.yaml#/components/parameters/IdempotencyKey
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: ./exceptions.schemas.yaml#/components/schemas/ExceptionDecisionRequest
+      responses:
+        '200':
+          description: Decision recorded
+          content:
+            application/json:
+              schema:
+                $ref: ./exceptions.schemas.yaml#/components/schemas/ExceptionResponse
+        '400':
+          $ref: ./common/responses.yaml#/components/responses/BadRequest
+        '401':
+          $ref: ./common/responses.yaml#/components/responses/Unauthorized
+        '403':
+          $ref: ./common/responses.yaml#/components/responses/Forbidden
+        '404':
+          $ref: ./common/responses.yaml#/components/responses/NotFound
+        '409':
+          $ref: ./common/responses.yaml#/components/responses/Conflict
+        default:
+          $ref: ./common/responses.yaml#/components/responses/Problem
+
+components:
+  securitySchemes:
+    apiKey:
+      $ref: ./common/security.yaml#/components/securitySchemes/apiKey
+    bearerAuth:
+      $ref: ./common/security.yaml#/components/securitySchemes/bearerAuth

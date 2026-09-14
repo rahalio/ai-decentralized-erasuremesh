@@ -1,0 +1,132 @@
+openapi: 3.1.0
+info:
+  title: Exceptions schemas
+  version: 0.1.0
+  description: Dual-control force-close and SLA breach exceptions (BR-7, BR-10).
+paths: {}
+components:
+  schemas:
+    ExceptionKind:
+      type: string
+      enum: [sla_breach, force_close, critical_node_overdue]
+
+    ExceptionStatus:
+      type: string
+      enum: [open, pending_second_approval, approved, denied]
+
+    ExceptionRecord:
+      type: object
+      required:
+        - id
+        - orderId
+        - kind
+        - status
+        - rationale
+        - requestedBy
+        - createdAt
+        - updatedAt
+      x-dynamodb:
+        entityType: EXCEPTION_RECORD
+        pkPattern: entity
+        pkPatternTemplate: "EXCEPTION_RECORD#${id}"
+        skPatternTemplate: "METADATA"
+      properties:
+        id:
+          $ref: ./common/primitives.yaml#/components/schemas/ExceptionRecordId
+        orderId:
+          $ref: ./common/primitives.yaml#/components/schemas/ErasureOrderId
+        kind:
+          $ref: '#/components/schemas/ExceptionKind'
+        status:
+          $ref: '#/components/schemas/ExceptionStatus'
+        rationale:
+          type: string
+          minLength: 1
+          maxLength: 4000
+        remediationPlan:
+          type: string
+          maxLength: 4000
+        overdueNodeIds:
+          type: array
+          items:
+            $ref: ./common/primitives.yaml#/components/schemas/ProcessorNodeId
+        requestedBy:
+          type: string
+        firstApproverId:
+          type: string
+        secondApproverId:
+          type: string
+        decisionRationale:
+          type: string
+        decidedAt:
+          type: string
+          format: date-time
+        createdAt:
+          type: string
+          format: date-time
+        updatedAt:
+          type: string
+          format: date-time
+
+    ExceptionCreate:
+      type: object
+      required: [orderId, kind, rationale]
+      properties:
+        orderId:
+          $ref: ./common/primitives.yaml#/components/schemas/ErasureOrderId
+        kind:
+          $ref: '#/components/schemas/ExceptionKind'
+        rationale:
+          type: string
+          minLength: 1
+          maxLength: 4000
+        remediationPlan:
+          type: string
+          maxLength: 4000
+        overdueNodeIds:
+          type: array
+          items:
+            $ref: ./common/primitives.yaml#/components/schemas/ProcessorNodeId
+
+    ExceptionDecisionRequest:
+      type: object
+      required: [decision]
+      properties:
+        decision:
+          type: string
+          enum: [approve, deny]
+        decisionRationale:
+          type: string
+          maxLength: 4000
+        remediationPlan:
+          type: string
+          maxLength: 4000
+
+    ExceptionListData:
+      type: object
+      required: [items]
+      properties:
+        items:
+          type: array
+          items:
+            $ref: '#/components/schemas/ExceptionRecord'
+        nextCursor:
+          type: string
+
+    ExceptionResponse:
+      type: object
+      required: [data]
+      properties:
+        data:
+          $ref: '#/components/schemas/ExceptionRecord'
+        meta:
+          $ref: ./common/envelopes.yaml#/components/schemas/ResponseMeta
+
+    ExceptionListResponse:
+      type: object
+      required: [data]
+      properties:
+        data:
+          $ref: '#/components/schemas/ExceptionListData'
+        meta:
+          $ref: ./common/envelopes.yaml#/components/schemas/ResponseMeta

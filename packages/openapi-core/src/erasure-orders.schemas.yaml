@@ -1,0 +1,268 @@
+openapi: 3.1.0
+info:
+  title: Erasure Orders schemas
+  version: 0.1.0
+  description: Erasure order intake, SLA clock, fan-out tasks, acknowledgements.
+paths: {}
+components:
+  schemas:
+    ErasureOrderStatus:
+      type: string
+      enum: [open, in_progress, blocked, completed, force_closed]
+
+    ErasureChannel:
+      type: string
+      enum: [written, verbal, portal, api]
+
+    LegalGround:
+      type: string
+      enum:
+        - consent_withdrawn
+        - no_longer_necessary
+        - marketing_objection
+        - unlawful
+        - legal_obligation
+        - child_iss
+
+    ErasureTaskStatus:
+      type: string
+      enum: [pending, dispatched, acknowledged, failed, waived]
+
+    CompletionGate:
+      type: object
+      required: [key, satisfied, detail]
+      properties:
+        key:
+          type: string
+          enum:
+            - critical_nodes_acked
+            - derived_artefacts_addressed
+            - recipient_notices_addressed
+            - sla_tracked
+        satisfied:
+          type: boolean
+        detail:
+          type: string
+
+    SlaExtension:
+      type: object
+      required: [extendedDueAt, rationale, recordedAt]
+      properties:
+        extendedDueAt:
+          type: string
+          format: date-time
+        rationale:
+          type: string
+          minLength: 1
+          maxLength: 2000
+        recordedAt:
+          type: string
+          format: date-time
+        recordedBy:
+          type: string
+
+    ErasureOrder:
+      type: object
+      description: Right-to-be-forgotten work order with SLA and completion gates.
+      required:
+        - id
+        - subjectRef
+        - status
+        - channel
+        - dueAt
+        - derivedArtefactsPending
+        - createdAt
+        - updatedAt
+      x-dynamodb:
+        entityType: ERASURE_ORDER
+        pkPattern: entity
+        pkPatternTemplate: "ERASURE_ORDER#${id}"
+        skPatternTemplate: "METADATA"
+      properties:
+        id:
+          $ref: ./common/primitives.yaml#/components/schemas/ErasureOrderId
+        subjectRef:
+          type: string
+          description: Pseudonymous subject key (no raw PII).
+          minLength: 1
+          maxLength: 200
+        tenantId:
+          $ref: ./common/primitives.yaml#/components/schemas/TenantId
+        status:
+          $ref: '#/components/schemas/ErasureOrderStatus'
+        channel:
+          $ref: '#/components/schemas/ErasureChannel'
+        legalGround:
+          $ref: '#/components/schemas/LegalGround'
+        dueAt:
+          type: string
+          format: date-time
+        derivedArtefactsPending:
+          type: integer
+          minimum: 0
+        completionGates:
+          type: array
+          items:
+            $ref: '#/components/schemas/CompletionGate'
+        slaExtensions:
+          type: array
+          items:
+            $ref: '#/components/schemas/SlaExtension'
+        createdAt:
+          type: string
+          format: date-time
+        updatedAt:
+          type: string
+          format: date-time
+
+    ErasureOrderCreate:
+      type: object
+      required: [subjectRef, channel]
+      properties:
+        subjectRef:
+          type: string
+          minLength: 1
+          maxLength: 200
+        tenantId:
+          $ref: ./common/primitives.yaml#/components/schemas/TenantId
+        channel:
+          $ref: '#/components/schemas/ErasureChannel'
+        legalGround:
+          $ref: '#/components/schemas/LegalGround'
+        dueAt:
+          type: string
+          format: date-time
+          description: Optional override; default one calendar month.
+
+    SlaExtensionCreate:
+      type: object
+      required: [extendedDueAt, rationale]
+      properties:
+        extendedDueAt:
+          type: string
+          format: date-time
+        rationale:
+          type: string
+          minLength: 1
+          maxLength: 2000
+
+    ErasureTask:
+      type: object
+      required: [id, orderId, processorNodeId, status, critical, createdAt, updatedAt]
+      x-dynamodb:
+        entityType: ERASURE_TASK
+        pkPattern: entity
+        pkPatternTemplate: "ERASURE_TASK#${id}"
+        skPatternTemplate: "METADATA"
+      properties:
+        id:
+          $ref: ./common/primitives.yaml#/components/schemas/ErasureTaskId
+        orderId:
+          $ref: ./common/primitives.yaml#/components/schemas/ErasureOrderId
+        processorNodeId:
+          $ref: ./common/primitives.yaml#/components/schemas/ProcessorNodeId
+        status:
+          $ref: '#/components/schemas/ErasureTaskStatus'
+        critical:
+          type: boolean
+          default: false
+        proofHash:
+          type: string
+        failureDetail:
+          type: string
+        acknowledgedAt:
+          type: string
+          format: date-time
+        createdAt:
+          type: string
+          format: date-time
+        updatedAt:
+          type: string
+          format: date-time
+
+    TaskAcknowledgement:
+      type: object
+      required: [status]
+      properties:
+        status:
+          type: string
+          enum: [acknowledged, failed]
+        proofHash:
+          type: string
+        detail:
+          type: string
+
+    ErasureOrderListData:
+      type: object
+      required: [items]
+      properties:
+        items:
+          type: array
+          items:
+            $ref: '#/components/schemas/ErasureOrder'
+        nextCursor:
+          type: string
+
+    ErasureTaskListData:
+      type: object
+      required: [items]
+      properties:
+        items:
+          type: array
+          items:
+            $ref: '#/components/schemas/ErasureTask'
+        nextCursor:
+          type: string
+
+    ErasureOrderResponse:
+      type: object
+      required: [data]
+      properties:
+        data:
+          $ref: '#/components/schemas/ErasureOrder'
+        meta:
+          $ref: ./common/envelopes.yaml#/components/schemas/ResponseMeta
+
+    ErasureOrderListResponse:
+      type: object
+      required: [data]
+      properties:
+        data:
+          $ref: '#/components/schemas/ErasureOrderListData'
+        meta:
+          $ref: ./common/envelopes.yaml#/components/schemas/ResponseMeta
+
+    ErasureTaskResponse:
+      type: object
+      required: [data]
+      properties:
+        data:
+          $ref: '#/components/schemas/ErasureTask'
+        meta:
+          $ref: ./common/envelopes.yaml#/components/schemas/ResponseMeta
+
+    ErasureTaskListResponse:
+      type: object
+      required: [data]
+      properties:
+        data:
+          $ref: '#/components/schemas/ErasureTaskListData'
+        meta:
+          $ref: ./common/envelopes.yaml#/components/schemas/ResponseMeta
+
+    CompletionPolicyResponse:
+      type: object
+      required: [data]
+      properties:
+        data:
+          type: object
+          required: [canComplete, gates]
+          properties:
+            canComplete:
+              type: boolean
+            gates:
+              type: array
+              items:
+                $ref: '#/components/schemas/CompletionGate'
+        meta:
+          $ref: ./common/envelopes.yaml#/components/schemas/ResponseMeta

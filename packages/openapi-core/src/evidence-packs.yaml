@@ -1,0 +1,199 @@
+openapi: 3.1.0
+info:
+  title: Evidence Packs API
+  version: 0.1.0
+  description: |
+    Assemble, seal, verify, and share evidence packs without raw PII (BR-5, BR-11).
+  x-domain: evp
+  license:
+    name: Proprietary
+servers:
+  - url: https://api.erasuremesh.local
+security:
+  - bearerAuth: []
+  - apiKey: []
+tags:
+  - name: EvidencePacks
+paths:
+  /v1/evidence-packs:
+    get:
+      operationId: listEvidencePacks
+      tags: [EvidencePacks]
+      summary: List evidence packs
+      parameters:
+        - $ref: ./common/parameters.yaml#/components/parameters/Cursor
+        - $ref: ./common/parameters.yaml#/components/parameters/Limit
+        - name: orderId
+          in: query
+          schema:
+            $ref: ./common/primitives.yaml#/components/schemas/ErasureOrderId
+        - name: status
+          in: query
+          schema:
+            $ref: ./evidence-packs.schemas.yaml#/components/schemas/EvidencePackStatus
+      responses:
+        '200':
+          description: Packs page
+          content:
+            application/json:
+              schema:
+                $ref: ./evidence-packs.schemas.yaml#/components/schemas/EvidencePackListResponse
+        '401':
+          $ref: ./common/responses.yaml#/components/responses/Unauthorized
+        default:
+          $ref: ./common/responses.yaml#/components/responses/Problem
+
+  /v1/evidence-packs/{packId}:
+    get:
+      operationId: getEvidencePack
+      tags: [EvidencePacks]
+      summary: Get evidence pack metadata
+      parameters:
+        - name: packId
+          in: path
+          required: true
+          schema:
+            $ref: ./common/primitives.yaml#/components/schemas/EvidencePackId
+      responses:
+        '200':
+          description: Pack
+          content:
+            application/json:
+              schema:
+                $ref: ./evidence-packs.schemas.yaml#/components/schemas/EvidencePackResponse
+        '401':
+          $ref: ./common/responses.yaml#/components/responses/Unauthorized
+        '404':
+          $ref: ./common/responses.yaml#/components/responses/NotFound
+        default:
+          $ref: ./common/responses.yaml#/components/responses/Problem
+
+  /v1/erasure-orders/{orderId}/evidence-pack:
+    post:
+      operationId: assembleEvidencePack
+      tags: [EvidencePacks]
+      summary: Assemble draft evidence pack for an order
+      parameters:
+        - name: orderId
+          in: path
+          required: true
+          schema:
+            $ref: ./common/primitives.yaml#/components/schemas/ErasureOrderId
+        - $ref: ./common/parameters.yaml#/components/parameters/IdempotencyKey
+      responses:
+        '201':
+          description: Pack assembled
+          content:
+            application/json:
+              schema:
+                $ref: ./evidence-packs.schemas.yaml#/components/schemas/EvidencePackResponse
+        '401':
+          $ref: ./common/responses.yaml#/components/responses/Unauthorized
+        '404':
+          $ref: ./common/responses.yaml#/components/responses/NotFound
+        '409':
+          $ref: ./common/responses.yaml#/components/responses/Conflict
+        default:
+          $ref: ./common/responses.yaml#/components/responses/Problem
+
+  /v1/evidence-packs/{packId}/seal:
+    post:
+      operationId: sealEvidencePack
+      tags: [EvidencePacks]
+      summary: Seal pack with content hash
+      parameters:
+        - name: packId
+          in: path
+          required: true
+          schema:
+            $ref: ./common/primitives.yaml#/components/schemas/EvidencePackId
+        - $ref: ./common/parameters.yaml#/components/parameters/IdempotencyKey
+      requestBody:
+        required: false
+        content:
+          application/json:
+            schema:
+              $ref: ./evidence-packs.schemas.yaml#/components/schemas/SealEvidencePackRequest
+      responses:
+        '200':
+          description: Pack sealed
+          content:
+            application/json:
+              schema:
+                $ref: ./evidence-packs.schemas.yaml#/components/schemas/EvidencePackResponse
+        '401':
+          $ref: ./common/responses.yaml#/components/responses/Unauthorized
+        '404':
+          $ref: ./common/responses.yaml#/components/responses/NotFound
+        '409':
+          $ref: ./common/responses.yaml#/components/responses/Conflict
+        default:
+          $ref: ./common/responses.yaml#/components/responses/Problem
+
+  /v1/evidence-packs/{packId}/verify-seal:
+    post:
+      operationId: verifyEvidencePackSeal
+      tags: [EvidencePacks]
+      summary: Verify sealed pack hash
+      parameters:
+        - name: packId
+          in: path
+          required: true
+          schema:
+            $ref: ./common/primitives.yaml#/components/schemas/EvidencePackId
+      x-repository: none
+      responses:
+        '200':
+          description: Verification result
+          content:
+            application/json:
+              schema:
+                $ref: ./evidence-packs.schemas.yaml#/components/schemas/VerifySealResponse
+        '401':
+          $ref: ./common/responses.yaml#/components/responses/Unauthorized
+        '404':
+          $ref: ./common/responses.yaml#/components/responses/NotFound
+        default:
+          $ref: ./common/responses.yaml#/components/responses/Problem
+
+  /v1/evidence-packs/{packId}/share:
+    post:
+      operationId: shareEvidencePack
+      tags: [EvidencePacks]
+      summary: Issue time-boxed share link (no raw PII)
+      parameters:
+        - name: packId
+          in: path
+          required: true
+          schema:
+            $ref: ./common/primitives.yaml#/components/schemas/EvidencePackId
+        - $ref: ./common/parameters.yaml#/components/parameters/IdempotencyKey
+      requestBody:
+        required: false
+        content:
+          application/json:
+            schema:
+              $ref: ./evidence-packs.schemas.yaml#/components/schemas/ShareEvidencePackRequest
+      x-repository: none
+      responses:
+        '200':
+          description: Share issued
+          content:
+            application/json:
+              schema:
+                $ref: ./evidence-packs.schemas.yaml#/components/schemas/ShareEvidencePackResponse
+        '401':
+          $ref: ./common/responses.yaml#/components/responses/Unauthorized
+        '404':
+          $ref: ./common/responses.yaml#/components/responses/NotFound
+        '409':
+          $ref: ./common/responses.yaml#/components/responses/Conflict
+        default:
+          $ref: ./common/responses.yaml#/components/responses/Problem
+
+components:
+  securitySchemes:
+    apiKey:
+      $ref: ./common/security.yaml#/components/securitySchemes/apiKey
+    bearerAuth:
+      $ref: ./common/security.yaml#/components/securitySchemes/bearerAuth

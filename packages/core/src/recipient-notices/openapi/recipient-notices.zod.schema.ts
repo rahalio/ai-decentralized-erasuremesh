@@ -1,0 +1,510 @@
+import { makeApi, Zodios, type ZodiosOptions } from '@zodios/core';
+import { z } from 'zod';
+
+const createRecipientNotice_Body = z
+  .object({
+    orderId: z.string().regex(/^eor_[0-9A-HJKMNP-TV-Z]{26}$/),
+    recipientNodeId: z.string().regex(/^pnd_[0-9A-HJKMNP-TV-Z]{26}$/),
+    disproportionateEffort: z.boolean().optional().default(false),
+    rationale: z.string().max(4000).optional(),
+  })
+  .passthrough();
+const ErasureOrderId = z.string();
+const NoticeStatus = z.enum(['pending', 'sent', 'disproportionate_effort']);
+const Problem = z
+  .object({
+    type: z.string().url(),
+    title: z.string(),
+    status: z.number().int(),
+    detail: z.string(),
+    instance: z.string().url(),
+    code: z.string(),
+  })
+  .partial()
+  .passthrough();
+const RecipientNoticeId = z.string();
+const ProcessorNodeId = z.string();
+const RecipientNotice = z
+  .object({
+    id: z.string().regex(/^rcn_[0-9A-HJKMNP-TV-Z]{26}$/),
+    orderId: z.string().regex(/^eor_[0-9A-HJKMNP-TV-Z]{26}$/),
+    recipientNodeId: z.string().regex(/^pnd_[0-9A-HJKMNP-TV-Z]{26}$/),
+    status: z.enum(['pending', 'sent', 'disproportionate_effort']),
+    rationale: z.string().optional(),
+    sentAt: z.string().datetime({ offset: true }).optional(),
+    createdAt: z.string().datetime({ offset: true }),
+    updatedAt: z.string().datetime({ offset: true }),
+  })
+  .passthrough();
+const RecipientNoticeListData = z
+  .object({
+    items: z.array(
+      z
+        .object({
+          id: z.string().regex(/^rcn_[0-9A-HJKMNP-TV-Z]{26}$/),
+          orderId: z.string().regex(/^eor_[0-9A-HJKMNP-TV-Z]{26}$/),
+          recipientNodeId: z.string().regex(/^pnd_[0-9A-HJKMNP-TV-Z]{26}$/),
+          status: z.enum(['pending', 'sent', 'disproportionate_effort']),
+          rationale: z.string().optional(),
+          sentAt: z.string().datetime({ offset: true }).optional(),
+          createdAt: z.string().datetime({ offset: true }),
+          updatedAt: z.string().datetime({ offset: true }),
+        })
+        .passthrough()
+    ),
+    nextCursor: z.string().optional(),
+  })
+  .passthrough();
+const ResponseMeta = z
+  .object({
+    requestId: z.string().uuid(),
+    correlationId: z.string(),
+    generatedAt: z.string().datetime({ offset: true }),
+  })
+  .partial()
+  .passthrough();
+const RecipientNoticeListResponse = z
+  .object({
+    data: z
+      .object({
+        items: z.array(
+          z
+            .object({
+              id: z.string().regex(/^rcn_[0-9A-HJKMNP-TV-Z]{26}$/),
+              orderId: z.string().regex(/^eor_[0-9A-HJKMNP-TV-Z]{26}$/),
+              recipientNodeId: z.string().regex(/^pnd_[0-9A-HJKMNP-TV-Z]{26}$/),
+              status: z.enum(['pending', 'sent', 'disproportionate_effort']),
+              rationale: z.string().optional(),
+              sentAt: z.string().datetime({ offset: true }).optional(),
+              createdAt: z.string().datetime({ offset: true }),
+              updatedAt: z.string().datetime({ offset: true }),
+            })
+            .passthrough()
+        ),
+        nextCursor: z.string().optional(),
+      })
+      .passthrough(),
+    meta: z
+      .object({
+        requestId: z.string().uuid(),
+        correlationId: z.string(),
+        generatedAt: z.string().datetime({ offset: true }),
+      })
+      .partial()
+      .passthrough()
+      .optional(),
+  })
+  .passthrough();
+const RecipientNoticeCreate = z
+  .object({
+    orderId: z.string().regex(/^eor_[0-9A-HJKMNP-TV-Z]{26}$/),
+    recipientNodeId: z.string().regex(/^pnd_[0-9A-HJKMNP-TV-Z]{26}$/),
+    disproportionateEffort: z.boolean().optional().default(false),
+    rationale: z.string().max(4000).optional(),
+  })
+  .passthrough();
+const RecipientNoticeResponse = z
+  .object({
+    data: z
+      .object({
+        id: z.string().regex(/^rcn_[0-9A-HJKMNP-TV-Z]{26}$/),
+        orderId: z.string().regex(/^eor_[0-9A-HJKMNP-TV-Z]{26}$/),
+        recipientNodeId: z.string().regex(/^pnd_[0-9A-HJKMNP-TV-Z]{26}$/),
+        status: z.enum(['pending', 'sent', 'disproportionate_effort']),
+        rationale: z.string().optional(),
+        sentAt: z.string().datetime({ offset: true }).optional(),
+        createdAt: z.string().datetime({ offset: true }),
+        updatedAt: z.string().datetime({ offset: true }),
+      })
+      .passthrough(),
+    meta: z
+      .object({
+        requestId: z.string().uuid(),
+        correlationId: z.string(),
+        generatedAt: z.string().datetime({ offset: true }),
+      })
+      .partial()
+      .passthrough()
+      .optional(),
+  })
+  .passthrough();
+const MarkNoticeSentRequest = z
+  .object({ sentAt: z.string().datetime({ offset: true }) })
+  .partial()
+  .passthrough();
+const MarkDisproportionateRequest = z
+  .object({ rationale: z.string().min(1).max(4000) })
+  .passthrough();
+
+export const schemas: any = {
+  createRecipientNotice_Body,
+  ErasureOrderId,
+  NoticeStatus,
+  Problem,
+  RecipientNoticeId,
+  ProcessorNodeId,
+  RecipientNotice,
+  RecipientNoticeListData,
+  ResponseMeta,
+  RecipientNoticeListResponse,
+  RecipientNoticeCreate,
+  RecipientNoticeResponse,
+  MarkNoticeSentRequest,
+  MarkDisproportionateRequest,
+};
+
+const endpoints = makeApi([
+  {
+    method: 'get',
+    path: '/v1/recipient-notices',
+    alias: 'listRecipientNotices',
+    requestFormat: 'json',
+    parameters: [
+      {
+        name: 'cursor',
+        type: 'Query',
+        schema: z.string().optional(),
+      },
+      {
+        name: 'limit',
+        type: 'Query',
+        schema: z.number().int().gte(1).lte(200).optional().default(50),
+      },
+      {
+        name: 'orderId',
+        type: 'Query',
+        schema: z
+          .string()
+          .regex(/^eor_[0-9A-HJKMNP-TV-Z]{26}$/)
+          .optional(),
+      },
+      {
+        name: 'status',
+        type: 'Query',
+        schema: z
+          .enum(['pending', 'sent', 'disproportionate_effort'])
+          .optional(),
+      },
+    ],
+    response: z
+      .object({
+        data: z
+          .object({
+            items: z.array(
+              z
+                .object({
+                  id: z.string().regex(/^rcn_[0-9A-HJKMNP-TV-Z]{26}$/),
+                  orderId: z.string().regex(/^eor_[0-9A-HJKMNP-TV-Z]{26}$/),
+                  recipientNodeId: z
+                    .string()
+                    .regex(/^pnd_[0-9A-HJKMNP-TV-Z]{26}$/),
+                  status: z.enum([
+                    'pending',
+                    'sent',
+                    'disproportionate_effort',
+                  ]),
+                  rationale: z.string().optional(),
+                  sentAt: z.string().datetime({ offset: true }).optional(),
+                  createdAt: z.string().datetime({ offset: true }),
+                  updatedAt: z.string().datetime({ offset: true }),
+                })
+                .passthrough()
+            ),
+            nextCursor: z.string().optional(),
+          })
+          .passthrough(),
+        meta: z
+          .object({
+            requestId: z.string().uuid(),
+            correlationId: z.string(),
+            generatedAt: z.string().datetime({ offset: true }),
+          })
+          .partial()
+          .passthrough()
+          .optional(),
+      })
+      .passthrough(),
+    errors: [
+      {
+        status: 401,
+        description: `Missing or invalid API key`,
+        schema: z
+          .object({
+            type: z.string().url(),
+            title: z.string(),
+            status: z.number().int(),
+            detail: z.string(),
+            instance: z.string().url(),
+            code: z.string(),
+          })
+          .partial()
+          .passthrough(),
+      },
+    ],
+  },
+  {
+    method: 'post',
+    path: '/v1/recipient-notices',
+    alias: 'createRecipientNotice',
+    requestFormat: 'json',
+    parameters: [
+      {
+        name: 'body',
+        type: 'Body',
+        schema: createRecipientNotice_Body,
+      },
+      {
+        name: 'Idempotency-Key',
+        type: 'Header',
+        schema: z.string().min(1).max(128),
+      },
+    ],
+    response: z
+      .object({
+        data: z
+          .object({
+            id: z.string().regex(/^rcn_[0-9A-HJKMNP-TV-Z]{26}$/),
+            orderId: z.string().regex(/^eor_[0-9A-HJKMNP-TV-Z]{26}$/),
+            recipientNodeId: z.string().regex(/^pnd_[0-9A-HJKMNP-TV-Z]{26}$/),
+            status: z.enum(['pending', 'sent', 'disproportionate_effort']),
+            rationale: z.string().optional(),
+            sentAt: z.string().datetime({ offset: true }).optional(),
+            createdAt: z.string().datetime({ offset: true }),
+            updatedAt: z.string().datetime({ offset: true }),
+          })
+          .passthrough(),
+        meta: z
+          .object({
+            requestId: z.string().uuid(),
+            correlationId: z.string(),
+            generatedAt: z.string().datetime({ offset: true }),
+          })
+          .partial()
+          .passthrough()
+          .optional(),
+      })
+      .passthrough(),
+    errors: [
+      {
+        status: 400,
+        description: `Malformed request`,
+        schema: z
+          .object({
+            type: z.string().url(),
+            title: z.string(),
+            status: z.number().int(),
+            detail: z.string(),
+            instance: z.string().url(),
+            code: z.string(),
+          })
+          .partial()
+          .passthrough(),
+      },
+      {
+        status: 401,
+        description: `Missing or invalid API key`,
+        schema: z
+          .object({
+            type: z.string().url(),
+            title: z.string(),
+            status: z.number().int(),
+            detail: z.string(),
+            instance: z.string().url(),
+            code: z.string(),
+          })
+          .partial()
+          .passthrough(),
+      },
+    ],
+  },
+  {
+    method: 'post',
+    path: '/v1/recipient-notices/:noticeId/disproportionate-effort',
+    alias: 'markRecipientNoticeDisproportionate',
+    requestFormat: 'json',
+    parameters: [
+      {
+        name: 'body',
+        type: 'Body',
+        schema: z
+          .object({ rationale: z.string().min(1).max(4000) })
+          .passthrough(),
+      },
+      {
+        name: 'noticeId',
+        type: 'Path',
+        schema: z.string().regex(/^rcn_[0-9A-HJKMNP-TV-Z]{26}$/),
+      },
+      {
+        name: 'Idempotency-Key',
+        type: 'Header',
+        schema: z.string().min(1).max(128),
+      },
+    ],
+    response: z
+      .object({
+        data: z
+          .object({
+            id: z.string().regex(/^rcn_[0-9A-HJKMNP-TV-Z]{26}$/),
+            orderId: z.string().regex(/^eor_[0-9A-HJKMNP-TV-Z]{26}$/),
+            recipientNodeId: z.string().regex(/^pnd_[0-9A-HJKMNP-TV-Z]{26}$/),
+            status: z.enum(['pending', 'sent', 'disproportionate_effort']),
+            rationale: z.string().optional(),
+            sentAt: z.string().datetime({ offset: true }).optional(),
+            createdAt: z.string().datetime({ offset: true }),
+            updatedAt: z.string().datetime({ offset: true }),
+          })
+          .passthrough(),
+        meta: z
+          .object({
+            requestId: z.string().uuid(),
+            correlationId: z.string(),
+            generatedAt: z.string().datetime({ offset: true }),
+          })
+          .partial()
+          .passthrough()
+          .optional(),
+      })
+      .passthrough(),
+    errors: [
+      {
+        status: 400,
+        description: `Malformed request`,
+        schema: z
+          .object({
+            type: z.string().url(),
+            title: z.string(),
+            status: z.number().int(),
+            detail: z.string(),
+            instance: z.string().url(),
+            code: z.string(),
+          })
+          .partial()
+          .passthrough(),
+      },
+      {
+        status: 401,
+        description: `Missing or invalid API key`,
+        schema: z
+          .object({
+            type: z.string().url(),
+            title: z.string(),
+            status: z.number().int(),
+            detail: z.string(),
+            instance: z.string().url(),
+            code: z.string(),
+          })
+          .partial()
+          .passthrough(),
+      },
+      {
+        status: 404,
+        description: `Resource not found`,
+        schema: z
+          .object({
+            type: z.string().url(),
+            title: z.string(),
+            status: z.number().int(),
+            detail: z.string(),
+            instance: z.string().url(),
+            code: z.string(),
+          })
+          .partial()
+          .passthrough(),
+      },
+    ],
+  },
+  {
+    method: 'post',
+    path: '/v1/recipient-notices/:noticeId/send',
+    alias: 'sendRecipientNotice',
+    requestFormat: 'json',
+    parameters: [
+      {
+        name: 'body',
+        type: 'Body',
+        schema: z
+          .object({ sentAt: z.string().datetime({ offset: true }) })
+          .partial()
+          .passthrough()
+          .optional(),
+      },
+      {
+        name: 'noticeId',
+        type: 'Path',
+        schema: z.string().regex(/^rcn_[0-9A-HJKMNP-TV-Z]{26}$/),
+      },
+      {
+        name: 'Idempotency-Key',
+        type: 'Header',
+        schema: z.string().min(1).max(128),
+      },
+    ],
+    response: z
+      .object({
+        data: z
+          .object({
+            id: z.string().regex(/^rcn_[0-9A-HJKMNP-TV-Z]{26}$/),
+            orderId: z.string().regex(/^eor_[0-9A-HJKMNP-TV-Z]{26}$/),
+            recipientNodeId: z.string().regex(/^pnd_[0-9A-HJKMNP-TV-Z]{26}$/),
+            status: z.enum(['pending', 'sent', 'disproportionate_effort']),
+            rationale: z.string().optional(),
+            sentAt: z.string().datetime({ offset: true }).optional(),
+            createdAt: z.string().datetime({ offset: true }),
+            updatedAt: z.string().datetime({ offset: true }),
+          })
+          .passthrough(),
+        meta: z
+          .object({
+            requestId: z.string().uuid(),
+            correlationId: z.string(),
+            generatedAt: z.string().datetime({ offset: true }),
+          })
+          .partial()
+          .passthrough()
+          .optional(),
+      })
+      .passthrough(),
+    errors: [
+      {
+        status: 401,
+        description: `Missing or invalid API key`,
+        schema: z
+          .object({
+            type: z.string().url(),
+            title: z.string(),
+            status: z.number().int(),
+            detail: z.string(),
+            instance: z.string().url(),
+            code: z.string(),
+          })
+          .partial()
+          .passthrough(),
+      },
+      {
+        status: 404,
+        description: `Resource not found`,
+        schema: z
+          .object({
+            type: z.string().url(),
+            title: z.string(),
+            status: z.number().int(),
+            detail: z.string(),
+            instance: z.string().url(),
+            code: z.string(),
+          })
+          .partial()
+          .passthrough(),
+      },
+    ],
+  },
+]);
+
+export const api: any = new Zodios(
+  'https://api.ddd-codegen-starter.local/v1',
+  endpoints
+);
+
+export function createApiClient(baseUrl: string, options?: ZodiosOptions): any {
+  return new Zodios(baseUrl, endpoints, options);
+}

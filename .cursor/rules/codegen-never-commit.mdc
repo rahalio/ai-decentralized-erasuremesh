@@ -1,0 +1,15 @@
+---
+description: Never commit or push .codegen to GitHub
+globs:
+  - .codegen/**/*
+alwaysApply: true
+---
+
+# `.codegen` must never be committed
+
+- The `.codegen/` directory is **local tooling only** (zero_codegen + merged config).
+- **Never** `git add`, commit, or push `.codegen/` (or nested `zero_codegen` sources).
+- It is listed in `.gitignore`; do not force-add it.
+- If missing locally, sync/copy from the baseline scaffold:
+  `/Users/nrahal/@code/zero-apps/zero-apps-codegen-scaffold` (or the team's current scaffold remote), then run `pnpm codegen:paths`.
+- Bundled OpenAPI under `packages/openapi-core/src/.bundled/` is also gitignored — regenerate via `pnpm bundle:openapi`.

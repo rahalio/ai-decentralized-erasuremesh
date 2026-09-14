@@ -1,0 +1,146 @@
+openapi: 3.1.0
+info:
+  title: Evidence Packs schemas
+  version: 0.1.0
+  description: Regulator/customer evidence without raw PII (BR-5, BR-11).
+paths: {}
+components:
+  schemas:
+    EvidencePackStatus:
+      type: string
+      enum: [draft, sealed]
+
+    EvidencePack:
+      type: object
+      required:
+        - id
+        - orderId
+        - status
+        - retainUntil
+        - createdAt
+        - updatedAt
+      x-dynamodb:
+        entityType: EVIDENCE_PACK
+        pkPattern: entity
+        pkPatternTemplate: "EVIDENCE_PACK#${id}"
+        skPatternTemplate: "METADATA"
+      properties:
+        id:
+          $ref: ./common/primitives.yaml#/components/schemas/EvidencePackId
+        orderId:
+          $ref: ./common/primitives.yaml#/components/schemas/ErasureOrderId
+        status:
+          $ref: '#/components/schemas/EvidencePackStatus'
+        packHash:
+          type: string
+          description: Content hash of sealed pack (no raw PII).
+        sealedAt:
+          type: string
+          format: date-time
+        retainUntil:
+          type: string
+          format: date-time
+          description: Supervisory / contractual dispute retention (BR-11).
+        incompleteNodesNoted:
+          type: array
+          items:
+            type: string
+          description: Nodes noted incomplete on force-close.
+        shareExpiresAt:
+          type: string
+          format: date-time
+        createdAt:
+          type: string
+          format: date-time
+        updatedAt:
+          type: string
+          format: date-time
+
+    SealEvidencePackRequest:
+      type: object
+      properties:
+        incompleteNodesNoted:
+          type: array
+          items:
+            type: string
+
+    ShareEvidencePackRequest:
+      type: object
+      properties:
+        ttlHours:
+          type: integer
+          minimum: 1
+          maximum: 168
+          default: 24
+
+    ShareEvidencePackResult:
+      type: object
+      required: [shareUrl, expiresAt, packHash]
+      properties:
+        shareUrl:
+          type: string
+          format: uri
+        expiresAt:
+          type: string
+          format: date-time
+        packHash:
+          type: string
+
+    VerifySealResult:
+      type: object
+      required: [valid, packHash, verifiedAt]
+      properties:
+        valid:
+          type: boolean
+        packHash:
+          type: string
+        verifiedAt:
+          type: string
+          format: date-time
+
+    EvidencePackListData:
+      type: object
+      required: [items]
+      properties:
+        items:
+          type: array
+          items:
+            $ref: '#/components/schemas/EvidencePack'
+        nextCursor:
+          type: string
+
+    EvidencePackResponse:
+      type: object
+      required: [data]
+      properties:
+        data:
+          $ref: '#/components/schemas/EvidencePack'
+        meta:
+          $ref: ./common/envelopes.yaml#/components/schemas/ResponseMeta
+
+    EvidencePackListResponse:
+      type: object
+      required: [data]
+      properties:
+        data:
+          $ref: '#/components/schemas/EvidencePackListData'
+        meta:
+          $ref: ./common/envelopes.yaml#/components/schemas/ResponseMeta
+
+    ShareEvidencePackResponse:
+      type: object
+      required: [data]
+      properties:
+        data:
+          $ref: '#/components/schemas/ShareEvidencePackResult'
+        meta:
+          $ref: ./common/envelopes.yaml#/components/schemas/ResponseMeta
+
+    VerifySealResponse:
+      type: object
+      required: [data]
+      properties:
+        data:
+          $ref: '#/components/schemas/VerifySealResult'
+        meta:
+          $ref: ./common/envelopes.yaml#/components/schemas/ResponseMeta
